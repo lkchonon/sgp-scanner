@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGP Scanner — Sharp Parlay Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080a0f;
+  --surface: #0e1118;
+  --surface2: #141820;
+  --border: #1e2530;
+  --border2: #2a3344;
+  --green: #00e87a;
+  --green-dim: rgba(0,232,122,0.12);
+  --red: #ff3b5c;
+  --red-dim: rgba(255,59,92,0.12);
+  --amber: #ffb830;
+  --amber-dim: rgba(255,184,48,0.12);
+  --blue: #4db8ff;
+  --blue-dim: rgba(77,184,255,0.1);
+  --text: #e8edf5;
+  --text2: #8a95a8;
+  --text3: #4a5568;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-body: 'DM Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; overflow-x: hidden; }
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 0;
+}
+header {
+  position: relative; z-index: 10;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+}
+.logo { display: flex; align-items: baseline; gap: 10px; }
+.logo-text { font-family: var(--font-display); font-size: 28px; letter-spacing: 2px; }
+.logo-badge {
+  font-family: var(--font-mono); font-size: 10px; color: var(--green);
+  background: var(--green-dim); border: 1px solid var(--green);
+  padding: 2px 8px; border-radius: 2px; letter-spacing: 1px;
+}
+.header-right { display: flex; align-items: center; gap: 14px; }
+.last-scan { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+.last-scan span { color: var(--text2); }
+.btn {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+  padding: 8px 18px; border-radius: 4px; border: 1px solid; cursor: pointer;
+  transition: all 0.15s; white-space: nowrap; text-transform: uppercase;
+}
+.btn-primary { background: var(--green); border-color: var(--green); color: #000; font-weight: 500; }
+.btn-primary:hover { background: #00ff88; }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-amber { background: var(--amber); border-color: var(--amber); color: #000; font-weight: 500; }
+.btn-amber:hover { opacity: 0.85; }
+#api-setup {
+  position: relative; z-index: 10;
+  background: var(--amber-dim);
+  border-bottom: 1px solid var(--amber);
+  padding: 12px 2rem;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+#api-setup.hidden { display: none; }
+.api-label { font-family: var(--font-mono); font-size: 11px; color: var(--amber); letter-spacing: 1px; white-space: nowrap; }
+#api-key-input {
+  flex: 1; min-width: 240px; max-width: 440px;
+  background: var(--surface); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--font-mono); font-size: 12px;
+  padding: 8px 12px; border-radius: 4px; outline: none;
+}
+#api-key-input:focus { border-color: var(--amber); }
+#api-key-input::placeholder { color: var(--text3); }
+.get-key-link { font-family: var(--font-mono); font-size: 10px; color: var(--amber); text-decoration: none; white-space: nowrap; }
+.get-key-link:hover { text-decoration: underline; }
+.sport-tabs {
+  position: relative; z-index: 10;
+  display: flex; border-bottom: 1px solid var(--border);
+  background: var(--surface); padding: 0 2rem;
+  overflow-x: auto;
+}
+.sport-tab {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+  color: var(--text3); padding: 14px 18px;
+  border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s; white-space: nowrap; text-transform: uppercase;
+}
+.sport-tab:hover { color: var(--text2); }
+.sport-tab.active { color: var(--green); border-bottom-color: var(--green); }
+.sport-tab .ct {
+  display: inline-block; margin-left: 6px;
+  background: var(--green-dim); color: var(--green);
+  border-radius: 10px; padding: 1px 7px; font-size: 10px;
+}
+main { position: relative; z-index: 10; max-width: 1400px; margin: 0 auto; padding: 2rem; }
+.scan-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 12px; }
+.scan-title { font-family: var(--font-display); font-size: 22px; letter-spacing: 1px; }
+.scan-date { font-family: var(--font-mono); font-size: 11px; color: var(--text3); margin-left: 12px; }
+#status-banner {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 20px 24px; margin-bottom: 2rem;
+  display: flex; align-items: center; gap: 16px;
+}
+#status-banner.hidden { display: none; }
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border2); border-top-color: var(--green);
+  border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.status-text { font-family: var(--font-mono); font-size: 12px; color: var(--text2); }
+.status-step { font-family: var(--font-mono); font-size: 11px; color: var(--green); margin-top: 4px; }
+#empty-state { text-align: center; padding: 80px 20px; }
+#empty-state.hidden { display: none; }
+.empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+.empty-title { font-family: var(--font-display); font-size: 32px; letter-spacing: 2px; color: var(--text2); margin-bottom: 8px; }
+.empty-sub { font-family: var(--font-mono); font-size: 12px; color: var(--text3); }
+#results { display: none; }
+#results.visible { display: block; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; margin-top: 32px; }
+.section-header:first-child { margin-top: 0; }
+.section-label { font-family: var(--font-display); font-size: 20px; letter-spacing: 1px; }
+.section-line { flex: 1; height: 1px; background: var(--border); }
+.games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; margin-bottom: 8px; }
+.game-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+  transition: border-color 0.2s;
+  animation: fadeUp 0.3s ease both;
+}
+.game-card.has-parlay { border-color: rgba(0,232,122,0.35); }
+.game-card.no-bet { border-color: rgba(255,59,92,0.2); }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+.game-card-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2);
+}
+.game-teams { font-family: var(--font-display); font-size: 17px; letter-spacing: 1px; }
+.vs-sep { color: var(--text3); font-size: 13px; margin: 0 4px; }
+.game-meta { display: flex; align-items: center; gap: 8px; }
+.game-time { font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
+.badge {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px;
+  padding: 3px 8px; border-radius: 3px; text-transform: uppercase;
+}
+.badge-green { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+.badge-red { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+.badge-amber { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber); }
+.game-context {
+  padding: 6px 18px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+.game-card-body { padding: 16px 18px; }
+.no-bet-reason {
+  font-family: var(--font-mono); font-size: 11px; color: var(--red);
+  display: flex; align-items: flex-start; gap: 8px; line-height: 1.7;
+}
+.version-tabs { display: flex; gap: 0; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.vtab {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px;
+  color: var(--text3); padding: 8px 14px;
+  border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all 0.15s; text-transform: uppercase;
+}
+.vtab:hover { color: var(--text2); }
+.vtab.active { color: var(--green); border-bottom-color: var(--green); }
+.parlay-panel { }
+.variance-flag {
+  background: var(--amber-dim); border: 1px solid rgba(255,184,48,0.3);
+  border-radius: 4px; padding: 6px 10px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--amber);
+  margin-bottom: 10px; line-height: 1.5;
+}
+.leg {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.leg:last-child { border-bottom: none; }
+.leg-num { font-family: var(--font-mono); font-size: 10px; color: var(--text3); width: 18px; flex-shrink: 0; }
+.leg-player { font-weight: 500; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leg-prop { font-family: var(--font-mono); font-size: 11px; color: var(--text2); flex-shrink: 0; }
+.leg-line { font-family: var(--font-mono); font-size: 11px; color: var(--green); font-weight: 500; flex-shrink: 0; }
+.leg-v { font-size: 12px; flex-shrink: 0; }
+.parlay-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 14px; }
+.pstat { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; text-align: center; }
+.pstat-label { font-family: var(--font-mono); font-size: 9px; color: var(--text3); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
+.pstat-val { font-family: var(--font-display); font-size: 17px; letter-spacing: 1px; color: var(--green); }
+.pstat-val.amber { color: var(--amber); }
+.corr-note { font-family: var(--font-mono); font-size: 10px; color: var(--text3); line-height: 1.6; padding-top: 10px; border-top: 1px solid var(--border); margin-top: 10px; }
+.injury-wrap { background: var(--surface); border: 1px solid rgba(255,59,92,0.25); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); padding: 10px 16px; text-align: left; background: var(--surface2); border-bottom: 1px solid var(--border); }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text2); font-family: var(--font-mono); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+.summary-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 8px; }
+.fire { color: var(--green); letter-spacing: 2px; }
+.error-box {
+  background: var(--red-dim); border: 1px solid var(--red); border-radius: 6px;
+  padding: 14px 18px; font-family: var(--font-mono); font-size: 12px; color: var(--red);
+  margin-bottom: 16px; line-height: 1.6;
+}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+@media (max-width: 640px) {
+  .games-grid { grid-template-columns: 1fr; }
+  header { padding: 0 1rem; }
+  main { padding: 1rem; }
+  #api-setup { padding: 10px 1rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-text">SGP SCANNER</span>
+    <span class="logo-badge">SHARP v2.0</span>
+  </div>
+  <div class="header-right">
+    <div class="last-scan" id="last-scan">Not yet scanned</div>
+    <button class="btn btn-primary" id="rescan-btn" onclick="runScan()" disabled>⟳ RESCAN</button>
+  </div>
+</header>
+
+<div id="api-setup">
+  <span class="api-label">⚡ GEMINI API KEY</span>
+  <input type="password" id="api-key-input" placeholder="Paste your free Gemini API key (AIza...)" />
+  <button class="btn btn-amber" onclick="saveKey()">SAVE &amp; SCAN</button>
+  <a class="get-key-link" href="https://aistudio.google.com/app/apikey" target="_blank">Get free key →</a>
+</div>
+
+<div class="sport-tabs">
+  <button class="sport-tab active" data-sport="all" onclick="filterSport(this,'all')">ALL SPORTS</button>
+  <button class="sport-tab" data-sport="nba" onclick="filterSport(this,'nba')">🏀 NBA</button>
+  <button class="sport-tab" data-sport="mlb" onclick="filterSport(this,'mlb')">⚾ MLB</button>
+  <button class="sport-tab" data-sport="nhl" onclick="filterSport(this,'nhl')">🏒 NHL</button>
+  <button class="sport-tab" data-sport="nfl" onclick="filterSport(this,'nfl')">🏈 NFL</button>
+</div>
+
+<main>
+  <div class="scan-bar">
+    <div style="display:flex;align-items:baseline;gap:12px;">
+      <span class="scan-title">TODAY'S PARLAY SCAN</span>
+      <span class="scan-date" id="scan-date"></span>
+    </div>
+  </div>
+
+  <div id="status-banner" class="hidden">
+    <div class="spinner"></div>
+    <div>
+      <div class="status-text" id="status-text">Initializing...</div>
+      <div class="status-step" id="status-step"></div>
+    </div>
+  </div>
+
+  <div id="error-box"></div>
+
+  <div id="empty-state">
+    <div class="empty-icon">🎯</div>
+    <div class="empty-title">AWAITING API KEY</div>
+    <div class="empty-sub">Paste your free Gemini API key above — then the scanner runs automatically</div>
+  </div>
+
+  <div id="results">
+    <div id="injury-sec"></div>
+    <div id="nba-sec"></div>
+    <div id="mlb-sec"></div>
+    <div id="nhl-sec"></div>
+    <div id="nfl-sec"></div>
+    <div id="summary-sec"></div>
+  </div>
+</main>
+
+<script>
+const TODAY = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+const SYSTEM = `You are SGP Scanner, a sharp same-game parlay engine. Today is ${TODAY}.
+
+MISSION: Scan every active sport today. Find verified last-5-game player stats. Build floor-based parlays. Return ONLY a JSON object.
+
+ABSOLUTE RULES — NEVER BREAK:
+1. Use ONLY last-5 individual game-by-game logs. Never season averages.
+2. A stat qualifies ONLY if it occurred in ALL 5 of the last 5 games.
+3. If a stat missed even once → discard it permanently.
+4. If you cannot find all 5 individual game scores → discard that player.
+5. Never include players listed as Out, Doubtful, Questionable, GTD, Day-to-Day, or Limited.
+6. Floor = lowest value across all 5 games. Line = floor minus 10%, rounded to nearest sportsbook line.
+7. Minimum 3 legs per parlay. Maximum 12 legs.
+8. Always produce BOTH full version AND safe version (remove 2 highest-variance legs).
+9. Include ALL valid parlays — 3-leg, 4-leg, 5-leg etc. Never skip small parlays.
+10. For FanDuel lines: if floor line unavailable, find next line BELOW floor, retest it. If it passes → use it with alt-line label. If fails → discard.
+11. If no parlay can be built for a game → explain the exact rule that failed.
+
+SPORTS TO SCAN (only if games exist today):
+- NBA: Points, Rebounds, Assists, Double-Double. Key players: Starting PG, C/PF, top 2 wings, 1 opposing star.
+- MLB: Hits ≥1, Total Bases, Strikeouts (SP only). Key players: SP, cleanup hitter, leadoff, 1 opposing cleanup.
+- NHL: Points ≥1 (goal or assist), Anytime Scorer, Shots on Goal, Goalie Saves. Key players: #1 center, PP specialist, goalie, 1 opposing forward.
+- NFL (Sep-Feb only): Passing yards, Rushing yards, Receptions, Receiving yards.
+
+POSITIVE CORRELATIONS TO STACK: PG pts+ast (same player), C pts+reb (usage), same-team top scorers, SP Ks + opposing lineup cold.
+NEGATIVE CORRELATIONS — NEVER STACK: Two opposing offense props, SP ERA low + opposing hitter hits high, goalie saves + blowout win.
+
+RESPOND WITH ONLY THIS JSON — no markdown, no explanation, no text before or after the JSON:
+
+{
+  "scanTime": "HH:MM AM/PM ET",
+  "sportsActive": ["NBA","MLB"],
+  "injuries": [
+    {"player":"Name","team":"ABV","sport":"NBA","status":"Questionable","reason":"knee"}
+  ],
+  "games": [
+    {
+      "id": "nyk-phi-g1",
+      "sport": "NBA",
+      "home": "NYK Knicks",
+      "away": "PHI 76ers",
+      "time": "8:00 PM ET",
+      "context": "R2 G1 — NYK leads",
+      "hasParlay": true,
+      "noBetReason": null,
+      "parlays": {
+        "full": {
+          "legs": [{"player":"Jalen Brunson","prop":"PTS","line":"o17.5","verified":"✅"}],
+          "oddsMin": "+2800","oddsMax": "+3800",
+          "payoutMin": 140,"payoutMax": 195,
+          "correlation": "Brunson pts and ast track together — high-assist games are always his highest-scoring"
+        },
+        "safe": {
+          "legs": [{"player":"Jalen Brunson","prop":"PTS","line":"o17.5","verified":"✅"}],
+          "oddsMin": "+1200","oddsMax": "+1800",
+          "payoutMin": 60,"payoutMax": 95
+        },
+        "varianceFlags": ["KAT AST o2.5 — floor is exactly 3, zero cushion"]
+      }
+    },
+    {
+      "id": "phi-mia",
+      "sport": "MLB",
+      "home": "MIA Marlins",
+      "away": "PHI Phillies",
+      "time": "6:40 PM ET",
+      "context": "Series finale",
+      "hasParlay": false,
+      "noBetReason": "Harper 0-for-4 in Game 4 — fails 5/5 floor test. No eligible props survive.",
+      "parlays": null
+    }
+  ],
+  "summary": [
+    {
+      "sport":"NBA","game":"NYK vs PHI","time":"8:00 PM ET",
+      "hasParlay":true,"legs":9,
+      "oddsMin":"+2800","oddsMax":"+3800",
+      "payoutMin":140,"payoutMax":195,"confidence":3
+    }
+  ]
+}`;
+
+let apiKey = localStorage.getItem('sgp_key') || '';
+let scanData = null;
+let currentSport = 'all';
+
+function init() {
+  document.getElementById('scan-date').textContent = TODAY;
+  if (apiKey) {
+    document.getElementById('api-setup').classList.add('hidden');
+    document.getElementById('rescan-btn').disabled = false;
+    document.getElementById('empty-state').classList.add('hidden');
+    runScan();
+  }
+}
+
+function saveKey() {
+  const v = document.getElementById('api-key-input').value.trim();
+  if (!v.startsWith('AIza')) { showErr('Invalid key — Gemini keys start with "AIza"'); return; }
+  apiKey = v;
+  localStorage.setItem('sgp_key', apiKey);
+  document.getElementById('api-setup').classList.add('hidden');
+  document.getElementById('rescan-btn').disabled = false;
+  document.getElementById('empty-state').classList.add('hidden');
+  runScan();
+}
+
+function showErr(msg) {
+  document.getElementById('error-box').innerHTML = `<div class="error-box">⚠ ${msg}</div>`;
+  setTimeout(() => document.getElementById('error-box').innerHTML = '', 7000);
+}
+
+const STEPS = [
+  "Identifying today's slate across all sports...",
+  "Pulling injury reports for every team...",
+  "Fetching last-5 game logs for key players...",
+  "Applying 5/5 floor rule to all props...",
+  "Verifying lines on FanDuel / DraftKings...",
+  "Building parlays and safe versions...",
+  "Compiling dashboard..."
+];
+
+async function runScan() {
+  if (!apiKey) return;
+  document.getElementById('rescan-btn').disabled = true;
+  document.getElementById('status-banner').classList.remove('hidden');
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('error-box').innerHTML = '';
+
+  let si = 0;
+  const iv = setInterval(() => {
+    if (si < STEPS.length) {
+      document.getElementById('status-text').textContent = STEPS[si];
+      document.getElementById('status-step').textContent = `Step ${si+1} of ${STEPS.length}`;
+      si++;
+    }
+  }, 3200);
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          systemInstruction: {parts:[{text: SYSTEM}]},
+          contents: [{
+            role: 'user',
+            parts: [{text: `Run the full SGP scan for today: ${TODAY}. Search for all active games, injury reports, and last-5 player game logs. Apply all floor rules. Build all valid parlays (minimum 3 legs). Return ONLY the JSON object.`}]
+          }],
+          generationConfig: {temperature: 0.2, maxOutputTokens: 8192},
+          tools: [{googleSearch: {}}]
+        })
+      }
+    );
+
+    clearInterval(iv);
+
+    if (!res.ok) {
+      const e = await res.json();
+      throw new Error(e.error?.message || `API error ${res.status}`);
+    }
+
+    const json = await res.json();
+    let raw = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fence) raw = fence[1];
+    const s = raw.indexOf('{'), e2 = raw.lastIndexOf('}');
+    if (s !== -1 && e2 !== -1) raw = raw.slice(s, e2+1);
+
+    scanData = JSON.parse(raw);
+    render(scanData);
+
+    const t = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('last-scan').innerHTML = `Last scan: <span>${t}</span>`;
+  } catch(err) {
+    clearInterval(iv);
+    showErr(`Scan failed: ${err.message}`);
+    document.getElementById('empty-state').classList.remove('hidden');
+    document.getElementById('empty-state').querySelector('.empty-title').textContent = 'SCAN FAILED';
+    document.getElementById('empty-state').querySelector('.empty-sub').textContent = err.message;
+  } finally {
+    document.getElementById('status-banner').classList.add('hidden');
+    document.getElementById('rescan-btn').disabled = false;
+  }
+}
+
+function render(data) {
+  if (!data?.games) return;
+  renderInjuries(data.injuries || []);
+  ['nba','mlb','nhl','nfl'].forEach(s => renderSport(s, data.games));
+  renderSummary(data.summary || []);
+  updateCounts(data.games);
+  document.getElementById('results').style.display = 'block';
+}
+
+function renderInjuries(list) {
+  const sec = document.getElementById('injury-sec');
+  if (!list.length) { sec.innerHTML=''; return; }
+  sec.innerHTML = `
+    <div class="section-header">
+      <span class="section-label">🚨 INJURY EXCLUSIONS</span>
+      <div class="section-line"></div>
+    </div>
+    <div class="injury-wrap">
+      <table>
+        <thead><tr><th>Player</th><th>Team</th><th>Sport</th><th>Status</th><th>Props</th></tr></thead>
+        <tbody>${list.map(i=>`
+          <tr>
+            <td style="color:var(--text)">${i.player}</td>
+            <td>${i.team}</td><td>${i.sport}</td>
+            <td><span class="badge badge-red">${i.status}</span></td>
+            <td style="color:var(--red)">❌ All discarded</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+const SPORT_LABELS = {nba:'🏀 NBA', mlb:'⚾ MLB', nhl:'🏒 NHL', nfl:'🏈 NFL'};
+
+function renderSport(sport, games) {
+  const sec = document.getElementById(`${sport}-sec`);
+  const sg = games.filter(g => g.sport.toLowerCase() === sport);
+  if (!sg.length) { sec.innerHTML=''; return; }
+  sec.innerHTML = `
+    <div class="section-header">
+      <span class="section-label">${SPORT_LABELS[sport]}</span>
+      <div class="section-line"></div>
+    </div>
+    <div class="games-grid">${sg.map((g,i) => gameCard(g,i)).join('')}</div>`;
+}
+
+function gameCard(g, idx) {
+  const badge = g.hasParlay
+    ? `<span class="badge badge-green">${g.parlays?.full?.legs?.length||'?'} LEGS</span>`
+    : `<span class="badge badge-red">NO BET</span>`;
+
+  let body = '';
+  if (!g.hasParlay) {
+    body = `<div class="no-bet-reason">❌ <span>${g.noBetReason||'Data insufficient for a parlay'}</span></div>`;
+  } else if (g.parlays) {
+    const {full, safe, varianceFlags} = g.parlays;
+    const legRows = legs => legs.map((l,i) => `
+      <div class="leg">
+        <span class="leg-num">${i+1}</span>
+        <span class="leg-player">${l.player}</span>
+        <span class="leg-prop">${l.prop}</span>
+        <span class="leg-line">${l.line}</span>
+        <span class="leg-v">${l.verified}</span>
+      </div>`).join('');
+    const flags = (varianceFlags||[]).map(f=>`<div class="variance-flag">⚠ ${f}</div>`).join('');
+    const stats = (p, extra) => `
+      <div class="parlay-stats">
+        <div class="pstat"><div class="pstat-label">Est. Odds</div><div class="pstat-val">${p.oddsMin}</div></div>
+        <div class="pstat"><div class="pstat-label">$5 Payout</div><div class="pstat-val">$${p.payoutMin}–$${p.payoutMax}</div></div>
+        <div class="pstat"><div class="pstat-label">Legs</div><div class="pstat-val amber">${p.legs.length}</div></div>
+      </div>${extra||''}`;
+
+    body = `
+      <div class="version-tabs">
+        <button class="vtab active" onclick="switchV(this,'f-${g.id}','s-${g.id}')">FULL (${full.legs.length})</button>
+        <button class="vtab" onclick="switchV(this,'s-${g.id}','f-${g.id}')">SAFE (${safe.legs.length})</button>
+      </div>
+      <div id="f-${g.id}" class="parlay-panel">
+        ${flags}
+        <div class="parlay-legs">${legRows(full.legs)}</div>
+        ${stats(full, full.correlation ? `<div class="corr-note">📈 ${full.correlation}</div>` : '')}
+      </div>
+      <div id="s-${g.id}" class="parlay-panel" style="display:none">
+        <div class="parlay-legs">${legRows(safe.legs)}</div>
+        ${stats(safe, '<div class="corr-note">🛡 Variance legs removed — maximum floor cushion only</div>')}
+      </div>`;
+  }
+
+  return `
+    <div class="game-card ${g.hasParlay?'has-parlay':'no-bet'}" data-sport="${g.sport.toLowerCase()}" style="animation-delay:${idx*0.06}s">
+      <div class="game-card-header">
+        <span class="game-teams">${g.away} <span class="vs-sep">vs</span> ${g.home}</span>
+        <div class="game-meta"><span class="game-time">${g.time}</span>${badge}</div>
+      </div>
+      ${g.context ? `<div class="game-context">${g.context}</div>` : ''}
+      <div class="game-card-body">${body}</div>
+    </div>`;
+}
+
+function switchV(btn, showId, hideId) {
+  const card = btn.closest('.game-card');
+  card.querySelectorAll('.vtab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(showId).style.display = 'block';
+  document.getElementById(hideId).style.display = 'none';
+}
+
+function renderSummary(list) {
+  const sec = document.getElementById('summary-sec');
+  if (!list.length) { sec.innerHTML=''; return; }
+  const fires = n => n>=3?'🔥🔥🔥':n>=2?'🔥🔥':'🔥';
+  sec.innerHTML = `
+    <div class="section-header" style="margin-top:40px">
+      <span class="section-label">📋 FULL SLATE SUMMARY</span>
+      <div class="section-line"></div>
+    </div>
+    <div class="summary-wrap">
+      <table>
+        <thead><tr><th>Sport</th><th>Game</th><th>Time</th><th>Parlay</th><th>Legs</th><th>Odds Range</th><th>$5 Payout</th><th>Confidence</th></tr></thead>
+        <tbody>${list.map(s=>`
+          <tr>
+            <td>${s.sport}</td>
+            <td style="color:var(--text)">${s.game}</td>
+            <td>${s.time}</td>
+            <td>${s.hasParlay?'<span class="badge badge-green">YES</span>':'<span class="badge badge-red">NO BET</span>'}</td>
+            <td>${s.hasParlay?s.legs:'—'}</td>
+            <td style="color:var(--green)">${s.hasParlay?`${s.oddsMin} to ${s.oddsMax}`:'—'}</td>
+            <td>${s.hasParlay?`$${s.payoutMin}–$${s.payoutMax}`:'—'}</td>
+            <td><span class="fire">${s.hasParlay?fires(s.confidence):'—'}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function updateCounts(games) {
+  ['nba','mlb','nhl','nfl'].forEach(sport => {
+    const n = games.filter(g => g.sport.toLowerCase()===sport && g.hasParlay).length;
+    const tab = document.querySelector(`.sport-tab[data-sport="${sport}"]`);
+    const ex = tab.querySelector('.ct');
+    if (ex) ex.remove();
+    if (n > 0) tab.insertAdjacentHTML('beforeend', `<span class="ct">${n}</span>`);
+  });
+}
+
+function filterSport(btn, sport) {
+  currentSport = sport;
+  document.querySelectorAll('.sport-tab').forEach(t => t.classList.toggle('active', t.dataset.sport===sport));
+  if (!scanData) return;
+  ['nba','mlb','nhl','nfl'].forEach(s => {
+    const sec = document.getElementById(`${s}-sec`);
+    if (sec) sec.style.display = (sport==='all'||sport===s) ? '' : 'none';
+  });
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
